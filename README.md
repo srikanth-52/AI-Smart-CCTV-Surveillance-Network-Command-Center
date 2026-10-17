@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🛡️ AI Smart CCTV Surveillance & Network Command Center
 ### *Active Real-Time Crowd Management, Crime Prevention, and Network Health Monitoring*
 
@@ -118,3 +119,6 @@ System defaults can be adjusted in [`backend/app/config.py`](file:///backend/app
 - `LOITERING_TIME_THRESHOLD_SEC`: Dwell duration before loitering alert (Default: 10.0s)
 - `TAMPER_BLUR_THRESHOLD`: Laplacian variance threshold for lens occlusion (Default: 45.0)
 - `ALERT_COOLDOWN_SEC`: Cooldown period between duplicate alerts (Default: 8.0s)
+=======
+# AI-Smart-CCTV-Surveillance-Network-Command-Center
+>>>>>>> 4b3aa5ce941be01b3d9126b9110af60cf5bd9d05
