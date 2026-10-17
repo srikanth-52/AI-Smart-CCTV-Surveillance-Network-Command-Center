@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI CCTV Surveillance Command Center | Crowd Management, Crime Prevention & Network Monitoring</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet GIS Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/components.css" />
+
+  <!-- Chart.js and Leaflet JS -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+  <!-- Top HUD Header -->
+  <header class="hud-header">
+    <div class="brand-section">
+      <div class="brand-logo-badge">🛡️</div>
+      <div class="brand-title-group">
+        <h1>AI CCTV Command Center</h1>
+        <div class="brand-subtitle">CROWD MANAGEMENT • CRIME PREVENTION • NETWORK OBSERVABILITY</div>
+      </div>
+    </div>
+
+    <!-- Live Telemetry KPI Bar -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="status-dot" id="ws-connection-dot" title="WebSocket Status"></div>
+        <div class="kpi-info">
+          <span class="kpi-label">Active Feeds</span>
+          <span class="kpi-val" id="kpi-active-cams">4/4</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-icon">👥</span>
+        <div class="kpi-info">
+          <span class="kpi-label">Total Crowd</span>
+          <span class="kpi-val" id="kpi-total-crowd">0 PAX</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-icon">⚡</span>
+        <div class="kpi-info">
+          <span class="kpi-label">Threat Level</span>
+          <span class="kpi-val" id="kpi-threat-level" style="color: var(--accent-green);">SAFE</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-icon">📶</span>
+        <div class="kpi-info">
+          <span class="kpi-label">Bandwidth</span>
+          <span class="kpi-val" id="kpi-bandwidth">8.2 Mbps</span>
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <span class="kpi-icon">🚨</span>
+        <div class="kpi-info">
+          <span class="kpi-label">Active Alerts</span>
+          <span class="kpi-val" id="kpi-unresolved-alerts" style="color: var(--accent-red);">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="header-actions">
+      <button class="btn btn-primary" id="btn-toggle-sound">🔊 Sound: ON</button>
+      <button class="btn btn-danger" id="btn-simulate-alert" title="Test Live Threat Simulation">⚡ Trigger Test Alert</button>
+      <button class="btn btn-outline" id="btn-add-camera-modal">➕ Add Camera</button>
+    </div>
+  </header>
+
+  <!-- Emergency Alert Strobe Banner -->
+  <div class="strobe-alert-bar" id="strobe-alert-bar">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 1.4rem;">⚠️</span>
+      <span id="strobe-alert-msg">CRITICAL SECURITY THREAT DETECTED</span>
+    </div>
+    <button class="btn btn-outline" style="background: rgba(0,0,0,0.4); border-color: #fff; color: #fff; padding: 4px 10px; font-size: 0.75rem;" onclick="document.getElementById('strobe-alert-bar').style.display='none'">Dismiss Banner</button>
+  </div>
+
+  <!-- Navigation Tab Bar -->
+  <nav class="nav-tab-bar">
+    <button class="tab-btn active" data-tab="matrix">
+      <span>📹</span> Multi-Camera Matrix
+    </button>
+    <button class="tab-btn" data-tab="incidents">
+      <span>🚨</span> Incident Log <span class="tab-badge" id="tab-alert-badge" style="display: none;">0</span>
+    </button>
+    <button class="tab-btn" data-tab="map">
+      <span>🗺️</span> Facility GIS Radar
+    </button>
+    <button class="tab-btn" data-tab="analytics">
+      <span>📊</span> Intelligence & Trends
+    </button>
+    <button class="tab-btn" data-tab="zones">
+      <span>🛡️</span> Geo-Fencing & Zones
+    </button>
+    <button class="tab-btn" data-tab="network">
+      <span>🌐</span> Network Health SLA
+    </button>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="app-container">
+
+    <!-- TAB 1: Multi-Camera Matrix View -->
+    <section class="tab-content active" id="tab-matrix">
+      <div class="matrix-toolbar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h2 style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            Live CCTV Feeds & AI Inference Grid
+          </h2>
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">Real-time YOLOv8 person tracking, heatmaps & anomaly overlays</span>
+        </div>
+        <div class="matrix-controls-group">
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">Layout:</span>
+          <div class="mode-toggle-group">
+            <button class="mode-btn btn-grid-layout" data-layout="1x1">1x1</button>
+            <button class="mode-btn btn-grid-layout active" data-layout="2x2">2x2</button>
+            <button class="mode-btn btn-grid-layout" data-layout="3x3">3x3</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Camera Grid Container -->
+      <div id="camera-grid-container" class="camera-grid grid-2x2">
+        <!-- Rendered dynamically by stream_viewer.js -->
+      </div>
+    </section>
+
+    <!-- TAB 2: Incident Command Feed -->
+    <section class="tab-content" id="tab-incidents">
+      <div class="matrix-toolbar">
+        <div>
+          <h2 style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            Security Incident Logs & Forensic Audit Trail
+          </h2>
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">Real-time violation alerts, loitering events, and photographic snapshots</span>
+        </div>
+        <div class="matrix-controls-group">
+          <select id="filter-incident-severity" class="form-select">
+            <option value="ALL">All Severities</option>
+            <option value="CRITICAL">Critical Only</option>
+            <option value="HIGH">High Only</option>
+            <option value="MEDIUM">Medium Only</option>
+          </select>
+          <select id="filter-incident-status" class="form-select">
+            <option value="ALL">All Statuses</option>
+            <option value="UNRESOLVED">Unresolved / Active</option>
+            <option value="RESOLVED">Resolved Only</option>
+          </select>
+          <button class="btn btn-outline" id="btn-export-csv">📥 Export CSV Audit</button>
+        </div>
+      </div>
+
+      <div id="incidents-feed-list" class="incident-list">
+        <!-- Rendered dynamically by alerts_feed.js -->
+      </div>
+    </section>
+
+    <!-- TAB 3: GIS Facility Radar Map -->
+    <section class="tab-content" id="tab-map">
+      <div class="matrix-toolbar">
+        <div>
+          <h2 style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            Interactive Facility GIS Map & Crowd Density Radar
+          </h2>
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">Dynamic camera beacons, field-of-view coverage cones, and real-time crowd hotspots</span>
+        </div>
+      </div>
+
+      <div class="radar-map-wrapper">
+        <div id="leaflet-map"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Intelligence & Analytics Charts -->
+    <section class="tab-content" id="tab-analytics">
+      <div class="matrix-toolbar">
+        <div>
+          <h2 style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            Crowd Intelligence & Threat Analytics
+          </h2>
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">24-hour occupancy trends, peak hours, and security incident classifications</span>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="glass-panel chart-card">
+          <div class="chart-header">
+            <span class="chart-title">📈 24-Hour Crowd Occupancy & Flow Trends</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-crowd-trends"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel chart-card">
+          <div class="chart-header">
+            <span class="chart-title">🚨 Security Incident Breakdown by Category</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-incident-types"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel chart-card">
+          <div class="chart-header">
+            <span class="chart-title">📊 Threat Severity Distribution</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-incident-severity"></canvas>
+          </div>
+        </div>
+
+        <div class="glass-panel chart-card">
+          <div class="chart-header">
+            <span class="chart-title">⚡ Network Stream SLA & Latency Telemetry</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-network-sla"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Geo-Fencing & Zones Configurator -->
+    <section class="tab-content" id="tab-zones">
+      <div class="matrix-toolbar">
+        <div>
+          <h2 style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            Interactive Restricted Zone & Rule Configurator
+          </h2>
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">Draw polygon boundaries directly on camera view to enforce geo-fencing and loitering alarms</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <div class="glass-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="form-label" style="margin: 0;">Select Camera:</span>
+              <select id="zone-camera-select" class="form-select"></select>
+            </div>
+            <button class="btn btn-outline" id="btn-clear-zone-points">↺ Clear Points</button>
+          </div>
+
+          <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: var(--radius-sm); overflow: hidden;">
+            <canvas id="zone-canvas" width="1280" height="720" style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary);">
+            💡 <em>Click anywhere on the canvas above to place polygon vertices. Connect at least 3 points to define a zone.</em>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff;">Configure Security Rule</h3>
+          
+          <div class="form-group">
+            <label class="form-label">Zone Name</label>
+            <input type="text" id="input-zone-name" class="form-input" placeholder="e.g. Server Room Vault Alpha" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Zone Type</label>
+            <select id="select-zone-type" class="form-select">
+              <option value="RESTRICTED">RESTRICTED (Alert on Any Intrusion)</option>
+              <option value="CROWD_COUNT">CROWD DENSITY (Occupancy Warning)</option>
+            </select>
+          </div>
+
+          <button class="btn btn-primary" id="btn-save-zone">💾 Save Security Zone</button>
+
+          <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08);" />
+
+          <h3 style="font-size: 0.9rem; font-weight: 700; color: #fff;">Active Zones on this Camera</h3>
+          <div id="zones-summary-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: Network Health SLA & Camera Topology -->
+    <section class="tab-content" id="tab-network">
+      <div class="matrix-toolbar">
+        <div>
+          <h2 style="font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">
+            CCTV Camera Network Observability & Tamper Diagnostic Center
+          </h2>
+          <span style="font-size: 0.78rem; color: var(--text-secondary);">Continuous frame rate, latency, lens occlusion, blur, and blackout monitoring</span>
+        </div>
+      </div>
+
+      <div class="topology-grid">
+        <div class="glass-panel cam-health-card">
+          <div class="chart-header">
+            <span class="chart-title">📹 Cam 1: Main Plaza</span>
+            <span class="status-dot"></span>
+          </div>
+          <div class="health-stat-row"><span>IP Address:</span><span class="health-stat-val">192.168.1.101</span></div>
+          <div class="health-stat-row"><span>FPS:</span><span class="health-stat-val">25.0 FPS</span></div>
+          <div class="health-stat-row"><span>Bitrate:</span><span class="health-stat-val">2.04 Mbps</span></div>
+          <div class="health-stat-row"><span>Latency:</span><span class="health-stat-val">38 ms</span></div>
+          <div class="health-stat-row"><span>Blur Score:</span><span class="health-stat-val">142.5 (Sharp)</span></div>
+          <div class="health-stat-row"><span>Lens Tamper:</span><span class="health-stat-val" style="color: var(--accent-green);">NONE</span></div>
+        </div>
+
+        <div class="glass-panel cam-health-card">
+          <div class="chart-header">
+            <span class="chart-title">📹 Cam 2: Vault & Server</span>
+            <span class="status-dot"></span>
+          </div>
+          <div class="health-stat-row"><span>IP Address:</span><span class="health-stat-val">192.168.1.102</span></div>
+          <div class="health-stat-row"><span>FPS:</span><span class="health-stat-val">25.0 FPS</span></div>
+          <div class="health-stat-row"><span>Bitrate:</span><span class="health-stat-val">2.10 Mbps</span></div>
+          <div class="health-stat-row"><span>Latency:</span><span class="health-stat-val">42 ms</span></div>
+          <div class="health-stat-row"><span>Blur Score:</span><span class="health-stat-val">128.0 (Sharp)</span></div>
+          <div class="health-stat-row"><span>Lens Tamper:</span><span class="health-stat-val" style="color: var(--accent-green);">NONE</span></div>
+        </div>
+
+        <div class="glass-panel cam-health-card">
+          <div class="chart-header">
+            <span class="chart-title">📹 Cam 3: Perimeter Fence</span>
+            <span class="status-dot"></span>
+          </div>
+          <div class="health-stat-row"><span>IP Address:</span><span class="health-stat-val">192.168.1.103</span></div>
+          <div class="health-stat-row"><span>FPS:</span><span class="health-stat-val">25.0 FPS</span></div>
+          <div class="health-stat-row"><span>Bitrate:</span><span class="health-stat-val">1.95 Mbps</span></div>
+          <div class="health-stat-row"><span>Latency:</span><span class="health-stat-val">45 ms</span></div>
+          <div class="health-stat-row"><span>Blur Score:</span><span class="health-stat-val">135.2 (Sharp)</span></div>
+          <div class="health-stat-row"><span>Lens Tamper:</span><span class="health-stat-val" style="color: var(--accent-green);">NONE</span></div>
+        </div>
+
+        <div class="glass-panel cam-health-card">
+          <div class="chart-header">
+            <span class="chart-title">📹 Cam 4: Transit Gates</span>
+            <span class="status-dot"></span>
+          </div>
+          <div class="health-stat-row"><span>IP Address:</span><span class="health-stat-val">192.168.1.104</span></div>
+          <div class="health-stat-row"><span>FPS:</span><span class="health-stat-val">25.0 FPS</span></div>
+          <div class="health-stat-row"><span>Bitrate:</span><span class="health-stat-val">2.08 Mbps</span></div>
+          <div class="health-stat-row"><span>Latency:</span><span class="health-stat-val">40 ms</span></div>
+          <div class="health-stat-row"><span>Blur Score:</span><span class="health-stat-val">119.8 (Sharp)</span></div>
+          <div class="health-stat-row"><span>Lens Tamper:</span><span class="health-stat-val" style="color: var(--accent-green);">NONE</span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: Add Camera Feed -->
+  <div class="modal-backdrop" id="modal-add-camera">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">➕ Add CCTV Stream / Video Source</span>
+        <button class="btn btn-outline modal-close-btn" style="padding: 2px 8px;">✕</button>
+      </div>
+      <form id="form-add-camera">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Camera Identifier ID</label>
+            <input type="text" id="input-cam-id" class="form-input" placeholder="e.g. cam-5" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Camera Name</label>
+            <input type="text" id="input-cam-name" class="form-input" placeholder="e.g. South Parking Garage" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Physical Location</label>
+            <input type="text" id="input-cam-loc" class="form-input" placeholder="e.g. Sector E - Level 1" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Source Type</label>
+            <select id="input-cam-source-type" class="form-select">
+              <option value="simulation">Synthetic AI Scenario Simulator (Recommended)</option>
+              <option value="webcam">Local Webcam (Device 0)</option>
+              <option value="rtsp">Live RTSP / IP Camera Stream URL</option>
+              <option value="video_file">Local Video File Path</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Source URL / Device Index / Path</label>
+            <input type="text" id="input-cam-source-url" class="form-input" placeholder="e.g. rtsp://192.168.1.50:554/live or 0 for webcam" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Crowd Surge Threshold (Persons)</label>
+            <input type="number" id="input-cam-limit" class="form-input" value="15" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Connect Stream</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Forensic Snapshot Lightbox -->
+  <div class="modal-backdrop" id="modal-lightbox">
+    <div class="modal-box" style="max-width: 800px;">
+      <div class="modal-header">
+        <div>
+          <span class="modal-title" id="lightbox-title">Incident Snapshot Evidence</span>
+          <div style="font-size: 0.72rem; color: var(--text-secondary);" id="lightbox-meta"></div>
+        </div>
+        <button class="btn btn-outline modal-close-btn" style="padding: 2px 8px;">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 10px; background: #000; display: flex; align-items: center; justify-content: center;">
+        <img id="lightbox-img" src="" alt="Snapshot" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 4px;" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline modal-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Scripts -->
+  <script src="js/stream_viewer.js"></script>
+  <script src="js/alerts_feed.js"></script>
+  <script src="js/map_viewer.js"></script>
+  <script src="js/analytics_charts.js"></script>
+  <script src="js/zone_editor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
